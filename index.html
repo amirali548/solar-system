@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#03050c" />
+  <meta
+    name="description"
+    content="ORBITAL — a cinematic, interactive 3D Solar System built with Three.js. Explore eight worlds, their moons and orbital data."
+  />
+  <title>ORBITAL — Interactive 3D Solar System</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23050712'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23ffc46b'/%3E%3Cellipse cx='32' cy='32' rx='25' ry='10' fill='none' stroke='%236b9cff' stroke-width='2' transform='rotate(-24 32 32)'/%3E%3Ccircle cx='51' cy='22' r='3.4' fill='%238fd0ff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="scene" class="scene" aria-label="Interactive 3D solar system"></div>
+  <div class="fx-vignette" aria-hidden="true"></div>
+  <div class="fx-grain" aria-hidden="true"></div>
+
+  <div class="hud">
+    <header class="hud-head">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span>
+        </div>
+        <div class="brand-copy">
+          <div class="brand-name">ORBIT<span>AL</span></div>
+          <div class="brand-sub">Interactive Solar System</div>
+        </div>
+      </div>
+
+      <nav class="planet-nav" aria-label="Planet navigation">
+        <span class="nav-kicker">DESTINATIONS</span>
+        <div class="nav-track" id="nav-track"></div>
+      </nav>
+
+      <div class="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span class="status-copy">
+          <strong>SYSTEM ONLINE</strong>
+          <em id="clock">13 NOV 2026 · 00:00 UTC</em>
+        </span>
+      </div>
+    </header>
+
+    <button id="back-btn" type="button" class="back-btn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M19 12H5M11 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>Back to Solar System</span>
+    </button>
+
+    <div class="hud-controls" id="controls">
+      <div class="control-group">
+        <button id="play-btn" type="button" class="ctrl-btn ctrl-btn--primary" aria-label="Pause planetary motion" title="Pause / resume (Space)">
+          <svg id="play-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+            <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
+          </svg>
+        </button>
+        <div class="speed-control">
+          <div class="speed-head">
+            <span class="ctrl-label">ORBITAL SPEED</span>
+            <span class="speed-value" id="speed-value">1.0&times;</span>
+          </div>
+          <input id="speed-slider" class="speed-slider" type="range" min="0.1" max="5" step="0.1" value="1" aria-label="Orbital speed" />
+        </div>
+      </div>
+
+      <div class="control-group control-group--secondary">
+        <button id="orbits-btn" type="button" class="ctrl-btn ctrl-btn--ghost" aria-pressed="true" title="Toggle orbital paths">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <ellipse cx="12" cy="12" rx="9" ry="4.5" transform="rotate(-24 12 12)" />
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+          </svg>
+          <span>ORBITS</span>
+        </button>
+        <button id="reset-btn" type="button" class="ctrl-btn ctrl-btn--ghost" title="Reset view">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3 4v5h5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>RESET</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="hints" aria-hidden="true">
+      <span><kbd>DRAG</kbd> ORBIT</span>
+      <span><kbd>SCROLL</kbd> ZOOM</span>
+      <span><kbd>CLICK</kbd> INSPECT</span>
+    </div>
+
+    <div id="focus-tag" class="focus-tag" aria-hidden="true">
+      <span class="focus-tag-dot"></span>
+      <span id="focus-tag-name" class="focus-tag-name">EARTH</span>
+      <span class="focus-tag-sep">/</span>
+      <span id="focus-tag-class" class="focus-tag-class">TERRESTRIAL</span>
+    </div>
+  </div>
+
+  <aside id="info-panel" class="info-panel" role="dialog" aria-modal="false" aria-labelledby="panel-name" aria-hidden="true">
+    <button id="panel-close" type="button" class="icon-btn panel-close" aria-label="Back to solar system">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+      </svg>
+    </button>
+
+    <div class="panel-scroll" id="panel-scroll">
+      <div class="panel-head">
+        <div class="panel-eyebrow">
+          <span class="eyebrow-dot" aria-hidden="true"></span>
+          <span id="panel-class">TERRESTRIAL</span>
+          <span class="eyebrow-sep">/</span>
+          <span id="panel-order">OBJECT 03 / 08</span>
+        </div>
+        <h1 id="panel-name">Earth</h1>
+        <p id="panel-tagline" class="panel-tagline">The only known world to harbor life.</p>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="preview-glow" aria-hidden="true"></div>
+        <canvas id="preview-canvas" class="preview-canvas" aria-label="Live 3D preview of the selected body"></canvas>
+        <div class="preview-grid" aria-hidden="true"></div>
+        <span class="preview-tag">LIVE 3D RENDER</span>
+        <span class="preview-corner preview-corner--tl" aria-hidden="true"></span>
+        <span class="preview-corner preview-corner--tr" aria-hidden="true"></span>
+        <span class="preview-corner preview-corner--bl" aria-hidden="true"></span>
+        <span class="preview-corner preview-corner--br" aria-hidden="true"></span>
+      </div>
+
+      <p id="panel-desc" class="panel-desc"></p>
+
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <section class="facts-section" aria-label="Scientific facts">
+        <div class="facts-head">
+          <h2>FIELD NOTES</h2>
+          <span class="facts-rule"></span>
+          <span class="facts-count">03</span>
+        </div>
+        <ul id="panel-facts" class="facts-list"></ul>
+      </section>
+
+      <footer class="panel-foot">
+        <span>DATA</span>
+        <span>NASA · JPL PLANETARY FACT SHEETS</span>
+      </footer>
+    </div>
+  </aside>
+
+  <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
+
+  <section id="hero" class="hero" aria-label="Introduction">
+    <div class="hero-rings" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="hero-inner">
+      <span class="hero-eyebrow">AN INTERACTIVE ORRERY · 2026</span>
+      <h1>Explore the<br /><em>Solar System</em></h1>
+      <p>Eight worlds, one star, four billion years of orbital motion. Drag to look around, then select a planet to begin.</p>
+      <button id="hero-start" type="button" class="hero-cta">
+        <span>Begin exploration</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+    <div class="hero-foot" aria-hidden="true">
+      <span>SOL</span><span class="hero-foot-line"></span><span>8 PLANETS · 293 SATURNIAN MOONS</span>
+    </div>
+  </section>
+
+  <section id="loader" class="loader" aria-label="Loading solar system">
+    <div class="loader-orbits" aria-hidden="true">
+      <span class="loader-ring loader-ring--1"></span>
+      <span class="loader-ring loader-ring--2"></span>
+      <span class="loader-ring loader-ring--3"></span>
+      <span class="loader-core"></span>
+    </div>
+    <div class="loader-inner">
+      <span class="loader-eyebrow">NASA-INSPIRED INTERACTIVE ORRERY</span>
+      <h1 class="loader-title">SOL<span>AR</span> SYSTEM</h1>
+      <p class="loader-status" id="loader-status">ACQUIRING PLANETARY TEXTURES</p>
+      <div class="loader-meter">
+        <div class="loader-bar"><span id="loader-bar-fill"></span></div>
+        <span class="loader-percent" id="loader-percent">0%</span>
+      </div>
+      <p class="loader-note">WEBGL · REAL-TIME RENDERING · EPHEMERIS-DRIVEN MOTION</p>
+    </div>
+  </section>
+
+  <section id="fatal" class="fatal" hidden>
+    <div class="fatal-card">
+      <span class="fatal-eyebrow">RENDERER OFFLINE</span>
+      <h1>Unable to start the orrery</h1>
+      <p id="fatal-message">WebGL is required to explore the solar system. Please enable hardware acceleration or try a modern browser.</p>
+      <button type="button" class="hero-cta" onclick="location.reload()">
+        <span>Reload</span>
+      </button>
+    </div>
+  </section>
+
+  <noscript>
+    <div class="fatal" style="display:flex">
+      <div class="fatal-card">
+        <h1>JavaScript required</h1>
+        <p>This interactive solar system needs JavaScript and WebGL enabled.</p>
+      </div>
+    </div>
+  </noscript>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
